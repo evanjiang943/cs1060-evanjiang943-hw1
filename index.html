@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048 Game</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>2048</h1>
+        <div class="score-container">
+            <div class="score">
+                <span>Score</span>
+                <div id="score">0</div>
+            </div>
+            <div class="best">
+                <span>Best</span>
+                <div id="best">0</div>
+            </div>
+        </div>
+        <div class="game-container">
+            <div id="grid" class="grid"></div>
+            <div id="game-over" class="game-over hidden">
+                <div class="game-over-text">
+                    <h2 id="game-over-title">Game Over!</h2>
+                    <button id="restart" class="restart-btn">Try Again</button>
+                </div>
+            </div>
+        </div>
+        <div class="instructions">
+            <p>Use arrow keys to move tiles. When two tiles with the same number touch, they merge into one!</p>
+            <button id="new-game" class="new-game-btn">New Game</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
