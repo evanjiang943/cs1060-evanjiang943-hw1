@@ -151,18 +151,227 @@ h1 {
     line-height: 1.4;
 }
 
+/* Game Mode Toggle */
+.game-mode-toggle {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.mode-btn {
+    background: #bbada0;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.15s ease-in-out;
+}
+
+.mode-btn:hover {
+    background: #9f8a76;
+}
+
+.mode-btn.active {
+    background: #8f7a66;
+}
+
+/* Game Mode Sections */
+.game-mode {
+    width: 100%;
+}
+
+/* Race Mode Styles */
+.race-container {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: nowrap;
+}
+
+.player-section, .cpu-section {
+    flex: 1;
+    min-width: 180px;
+    text-align: center;
+}
+
+.player-section h3, .cpu-section h3 {
+    font-size: 20px;
+    color: #776e65;
+    margin-bottom: 10px;
+}
+
+.vs-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 80px;
+    position: relative;
+}
+
+.vs-text {
+    font-size: 24px;
+    font-weight: bold;
+    color: #776e65;
+    background: #bbada0;
+    color: white;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.race-winner {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(255, 255, 255, 0.95);
+    padding: 20px;
+    border-radius: 10px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+    min-width: 200px;
+}
+
+.race-winner h2 {
+    font-size: 24px;
+    color: #776e65;
+    margin-bottom: 15px;
+}
+
+/* Small game containers for race mode */
+.game-container.small {
+    width: 180px;
+    height: 180px;
+    margin: 10px auto;
+}
+
+.grid.small {
+    gap: 5px;
+    padding: 5px;
+}
+
+.grid.small .tile {
+    font-size: 18px;
+}
+
+.grid.small .tile-128,
+.grid.small .tile-256,
+.grid.small .tile-512 {
+    font-size: 16px;
+}
+
+.grid.small .tile-1024,
+.grid.small .tile-2048 {
+    font-size: 14px;
+}
+
+/* Score styling for race mode */
+.player-section .score,
+.cpu-section .score {
+    background: #bbada0;
+    padding: 8px 15px;
+    border-radius: 6px;
+    color: white;
+    margin: 0 auto 10px;
+    max-width: 120px;
+}
+
+.player-section .score span,
+.cpu-section .score span {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.player-section .score div,
+.cpu-section .score div {
+    font-size: 18px;
+    font-weight: bold;
+    margin-top: 3px;
+}
+
+@media (max-width: 768px) {
+    .race-container {
+        gap: 10px;
+    }
+    
+    .game-container.small {
+        width: 140px;
+        height: 140px;
+    }
+    
+    .player-section, .cpu-section {
+        min-width: 140px;
+    }
+    
+    .player-section h3, .cpu-section h3 {
+        font-size: 16px;
+    }
+    
+    .vs-section {
+        min-width: 60px;
+    }
+    
+    .vs-text {
+        width: 50px;
+        height: 50px;
+        font-size: 18px;
+    }
+}
+
 @media (max-width: 480px) {
     .container {
-        padding: 10px;
+        padding: 5px;
     }
     
     h1 {
-        font-size: 36px;
+        font-size: 32px;
+        margin-bottom: 15px;
     }
     
     .game-container {
         width: 280px;
         height: 280px;
+    }
+    
+    .game-container.small {
+        width: 110px;
+        height: 110px;
+    }
+    
+    .race-container {
+        gap: 8px;
+    }
+    
+    .player-section, .cpu-section {
+        min-width: 110px;
+    }
+    
+    .player-section h3, .cpu-section h3 {
+        font-size: 14px;
+        margin-bottom: 5px;
+    }
+    
+    .vs-section {
+        min-width: 40px;
+    }
+    
+    .vs-text {
+        width: 40px;
+        height: 40px;
+        font-size: 14px;
     }
     
     .tile {
@@ -175,5 +384,46 @@ h1 {
     
     .tile-1024, .tile-2048 {
         font-size: 18px;
+    }
+    
+    .grid.small .tile {
+        font-size: 12px;
+    }
+    
+    .grid.small .tile-128,
+    .grid.small .tile-256,
+    .grid.small .tile-512 {
+        font-size: 10px;
+    }
+    
+    .grid.small .tile-1024,
+    .grid.small .tile-2048 {
+        font-size: 8px;
+    }
+    
+    .mode-btn {
+        padding: 8px 12px;
+        font-size: 11px;
+    }
+    
+    .player-section .score,
+    .cpu-section .score {
+        padding: 5px 10px;
+        max-width: 100px;
+    }
+    
+    .player-section .score div,
+    .cpu-section .score div {
+        font-size: 14px;
+    }
+    
+    .race-winner {
+        min-width: 180px;
+        padding: 15px;
+    }
+    
+    .race-winner h2 {
+        font-size: 18px;
+        margin-bottom: 10px;
     }
 }

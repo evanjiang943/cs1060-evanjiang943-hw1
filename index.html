@@ -9,28 +9,87 @@
 <body>
     <div class="container">
         <h1>2048</h1>
-        <div class="score-container">
-            <div class="score">
-                <span>Score</span>
-                <div id="score">0</div>
-            </div>
-            <div class="best">
-                <span>Best</span>
-                <div id="best">0</div>
-            </div>
+        
+        <!-- Game Mode Toggle -->
+        <div class="game-mode-toggle">
+            <button id="single-player-btn" class="mode-btn active">Single Player</button>
+            <button id="race-mode-btn" class="mode-btn">Race vs Computer</button>
         </div>
-        <div class="game-container">
-            <div id="grid" class="grid"></div>
-            <div id="game-over" class="game-over hidden">
-                <div class="game-over-text">
-                    <h2 id="game-over-title">Game Over!</h2>
-                    <button id="restart" class="restart-btn">Try Again</button>
+
+        <!-- Single Player Mode -->
+        <div id="single-player-mode" class="game-mode">
+            <div class="score-container">
+                <div class="score">
+                    <span>Score</span>
+                    <div id="score">0</div>
+                </div>
+                <div class="best">
+                    <span>Best</span>
+                    <div id="best">0</div>
                 </div>
             </div>
+            <div class="game-container">
+                <div id="grid" class="grid"></div>
+                <div id="game-over" class="game-over hidden">
+                    <div class="game-over-text">
+                        <h2 id="game-over-title">Game Over!</h2>
+                        <button id="restart" class="restart-btn">Try Again</button>
+                    </div>
+                </div>
+            </div>
+            <div class="instructions">
+                <p>Use arrow keys to move tiles. When two tiles with the same number touch, they merge into one!</p>
+                <button id="new-game" class="new-game-btn">New Game</button>
+            </div>
         </div>
-        <div class="instructions">
-            <p>Use arrow keys to move tiles. When two tiles with the same number touch, they merge into one!</p>
-            <button id="new-game" class="new-game-btn">New Game</button>
+
+        <!-- Race Mode -->
+        <div id="race-mode" class="game-mode hidden">
+            <div class="race-container">
+                <div class="player-section">
+                    <h3>You</h3>
+                    <div class="score">
+                        <span>Score</span>
+                        <div id="player-score">0</div>
+                    </div>
+                    <div class="game-container small">
+                        <div id="player-grid" class="grid small"></div>
+                        <div id="player-game-over" class="game-over hidden">
+                            <div class="game-over-text">
+                                <h2 id="player-game-over-title">Game Over!</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="vs-section">
+                    <div class="vs-text">VS</div>
+                    <div id="race-winner" class="race-winner hidden">
+                        <h2 id="winner-text"></h2>
+                        <button id="race-restart" class="restart-btn">Race Again</button>
+                    </div>
+                </div>
+                
+                <div class="cpu-section">
+                    <h3>Computer</h3>
+                    <div class="score">
+                        <span>Score</span>
+                        <div id="cpu-score">0</div>
+                    </div>
+                    <div class="game-container small">
+                        <div id="cpu-grid" class="grid small"></div>
+                        <div id="cpu-game-over" class="game-over hidden">
+                            <div class="game-over-text">
+                                <h2 id="cpu-game-over-title">Game Over!</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="instructions">
+                <p>Race to 2048! Use arrow keys to play. First to reach 2048 wins!</p>
+                <button id="start-race" class="new-game-btn">Start Race</button>
+            </div>
         </div>
     </div>
     <script src="script.js"></script>

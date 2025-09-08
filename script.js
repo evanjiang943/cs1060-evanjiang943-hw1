@@ -1,5 +1,10 @@
 class Game2048 {
-    constructor() {
+    constructor(gridId, scoreId, gameOverId, gameOverTitleId) {
+        this.gridId = gridId;
+        this.scoreId = scoreId;
+        this.gameOverId = gameOverId;
+        this.gameOverTitleId = gameOverTitleId;
+        
         this.grid = [];
         this.score = 0;
         this.best = localStorage.getItem('best2048') || 0;
@@ -8,7 +13,6 @@ class Game2048 {
         this.won = false;
         
         this.init();
-        this.bindEvents();
     }
 
     init() {
@@ -40,7 +44,9 @@ class Game2048 {
     }
 
     updateDisplay() {
-        const gridElement = document.getElementById('grid');
+        const gridElement = document.getElementById(this.gridId);
+        if (!gridElement) return;
+        
         gridElement.innerHTML = '';
 
         for (let i = 0; i < this.size; i++) {
@@ -59,12 +65,22 @@ class Game2048 {
     }
 
     updateScore() {
-        document.getElementById('score').textContent = this.score;
-        if (this.score > this.best) {
-            this.best = this.score;
-            localStorage.setItem('best2048', this.best);
+        const scoreElement = document.getElementById(this.scoreId);
+        if (scoreElement) {
+            scoreElement.textContent = this.score;
         }
-        document.getElementById('best').textContent = this.best;
+        
+        // Only update best score for single player mode
+        if (this.scoreId === 'score') {
+            if (this.score > this.best) {
+                this.best = this.score;
+                localStorage.setItem('best2048', this.best);
+            }
+            const bestElement = document.getElementById('best');
+            if (bestElement) {
+                bestElement.textContent = this.best;
+            }
+        }
     }
 
     move(direction) {
@@ -95,10 +111,10 @@ class Game2048 {
             
             if (this.checkWin() && !this.won) {
                 this.won = true;
-                this.showGameOver('You Win!');
+                return 'win';
             } else if (this.checkGameOver()) {
                 this.gameOver = true;
-                this.showGameOver('Game Over!');
+                return 'lose';
             }
         }
 
@@ -257,12 +273,16 @@ class Game2048 {
     }
 
     showGameOver(message) {
-        document.getElementById('game-over-title').textContent = message;
-        document.getElementById('game-over').classList.remove('hidden');
+        const titleElement = document.getElementById(this.gameOverTitleId);
+        const gameOverElement = document.getElementById(this.gameOverId);
+        
+        if (titleElement) titleElement.textContent = message;
+        if (gameOverElement) gameOverElement.classList.remove('hidden');
     }
 
     hideGameOver() {
-        document.getElementById('game-over').classList.add('hidden');
+        const gameOverElement = document.getElementById(this.gameOverId);
+        if (gameOverElement) gameOverElement.classList.add('hidden');
     }
 
     restart() {
@@ -270,34 +290,296 @@ class Game2048 {
         this.init();
     }
 
+    // Get available moves for AI
+    getAvailableMoves() {
+        const moves = [];
+        const directions = ['left', 'right', 'up', 'down'];
+        
+        for (const direction of directions) {
+            // Test if move is possible
+            const testGrid = this.grid.map(row => [...row]);
+            const testGame = Object.create(this);
+            testGame.grid = testGrid;
+            
+            if (testGame.move(direction)) {
+                moves.push(direction);
+            }
+        }
+        
+        return moves;
+    }
+}
+
+class CPUPlayer extends Game2048 {
+    constructor(gridId, scoreId, gameOverId, gameOverTitleId) {
+        super(gridId, scoreId, gameOverId, gameOverTitleId);
+        this.moveDelay = 1500; // Much slower CPU moves (1.5 seconds delay)
+        this.isActive = false;
+        this.moveTimeout = null;
+    }
+
+    start() {
+        this.isActive = true;
+        this.makeNextMove();
+    }
+
+    stop() {
+        this.isActive = false;
+        if (this.moveTimeout) {
+            clearTimeout(this.moveTimeout);
+            this.moveTimeout = null;
+        }
+    }
+
+    makeNextMove() {
+        if (!this.isActive || this.gameOver || this.won) return;
+
+        this.moveTimeout = setTimeout(() => {
+            if (!this.isActive || this.gameOver || this.won) return;
+            
+            const move = this.getBestMove();
+            if (move) {
+                const result = this.move(move);
+                if (result === 'win') {
+                    this.stop();
+                    return 'win';
+                } else if (result === 'lose') {
+                    this.stop();
+                    return 'lose';
+                }
+            } else {
+                // No valid moves available
+                this.gameOver = true;
+                this.stop();
+                return 'lose';
+            }
+            
+            // Continue making moves if still active
+            if (this.isActive && !this.gameOver && !this.won) {
+                this.makeNextMove();
+            }
+        }, this.moveDelay);
+    }
+
+    // Simple AI strategy: prefer moves that create higher scores
+    getBestMove() {
+        const availableMoves = this.getAvailableMoves();
+        if (availableMoves.length === 0) return null;
+
+        let bestMove = availableMoves[0];
+        let bestScore = -1;
+
+        for (const move of availableMoves) {
+            const score = this.evaluateMove(move);
+            if (score > bestScore) {
+                bestScore = score;
+                bestMove = move;
+            }
+        }
+
+        return bestMove;
+    }
+
+    evaluateMove(direction) {
+        // Create a completely separate test instance to avoid affecting the actual game
+        const testGame = new Game2048('temp', 'temp', 'temp', 'temp');
+        testGame.grid = this.grid.map(row => [...row]);
+        testGame.score = this.score;
+        testGame.gameOver = this.gameOver;
+        testGame.won = this.won;
+        
+        // Test the move on the copy
+        const moved = testGame.move(direction);
+        if (!moved) return -1; // Invalid move
+        
+        return testGame.score - this.score;
+    }
+}
+
+class GameManager {
+    constructor() {
+        this.currentMode = 'single';
+        this.singlePlayerGame = null;
+        this.playerGame = null;
+        this.cpuGame = null;
+        this.raceActive = false;
+        
+        this.init();
+        this.bindEvents();
+    }
+
+    init() {
+        this.showSinglePlayerMode();
+        this.singlePlayerGame = new Game2048('grid', 'score', 'game-over', 'game-over-title');
+    }
+
+    showSinglePlayerMode() {
+        this.currentMode = 'single';
+        document.getElementById('single-player-mode').classList.remove('hidden');
+        document.getElementById('race-mode').classList.add('hidden');
+        document.getElementById('single-player-btn').classList.add('active');
+        document.getElementById('race-mode-btn').classList.remove('active');
+    }
+
+    showRaceMode() {
+        this.currentMode = 'race';
+        document.getElementById('single-player-mode').classList.add('hidden');
+        document.getElementById('race-mode').classList.remove('hidden');
+        document.getElementById('single-player-btn').classList.remove('active');
+        document.getElementById('race-mode-btn').classList.add('active');
+        
+        this.initRaceMode();
+    }
+
+    initRaceMode() {
+        this.playerGame = new Game2048('player-grid', 'player-score', 'player-game-over', 'player-game-over-title');
+        this.cpuGame = new CPUPlayer('cpu-grid', 'cpu-score', 'cpu-game-over', 'cpu-game-over-title');
+        this.hideRaceWinner();
+    }
+
+    startRace() {
+        // Stop any existing CPU game
+        if (this.cpuGame) {
+            this.cpuGame.stop();
+        }
+        
+        // Restart both games
+        if (this.playerGame) this.playerGame.restart();
+        if (this.cpuGame) this.cpuGame.restart();
+        
+        this.raceActive = true;
+        this.hideRaceWinner();
+        
+        // Start CPU player with a small delay to ensure everything is initialized
+        setTimeout(() => {
+            if (this.cpuGame && this.raceActive) {
+                this.cpuGame.start();
+            }
+        }, 100);
+        
+        // Set up win detection
+        this.checkRaceWinner();
+    }
+
+    checkRaceWinner() {
+        if (!this.raceActive) return;
+
+        const checkWin = () => {
+            if (!this.raceActive) return;
+
+            if (this.playerGame && this.playerGame.won) {
+                this.endRace('You Win!');
+                return;
+            } 
+            
+            if (this.cpuGame && this.cpuGame.won) {
+                this.endRace('Computer Wins!');
+                return;
+            } 
+            
+            if (this.playerGame && this.cpuGame && 
+                this.playerGame.gameOver && this.cpuGame.gameOver) {
+                this.endRace('Draw - Both Lost!');
+                return;
+            }
+            
+            // Continue checking if race is still active
+            if (this.raceActive) {
+                setTimeout(checkWin, 200); // Check again in 200ms
+            }
+        };
+
+        setTimeout(checkWin, 200);
+    }
+
+    endRace(winnerText) {
+        this.raceActive = false;
+        if (this.cpuGame) this.cpuGame.stop();
+        
+        document.getElementById('winner-text').textContent = winnerText;
+        document.getElementById('race-winner').classList.remove('hidden');
+    }
+
+    hideRaceWinner() {
+        document.getElementById('race-winner').classList.add('hidden');
+    }
+
     bindEvents() {
+        // Mode toggle buttons
+        document.getElementById('single-player-btn').addEventListener('click', () => {
+            this.showSinglePlayerMode();
+        });
+
+        document.getElementById('race-mode-btn').addEventListener('click', () => {
+            this.showRaceMode();
+        });
+
+        // Single player controls
+        document.getElementById('restart').addEventListener('click', () => {
+            if (this.singlePlayerGame) this.singlePlayerGame.restart();
+        });
+
+        document.getElementById('new-game').addEventListener('click', () => {
+            if (this.singlePlayerGame) this.singlePlayerGame.restart();
+        });
+
+        // Race mode controls
+        document.getElementById('start-race').addEventListener('click', () => {
+            this.startRace();
+        });
+
+        document.getElementById('race-restart').addEventListener('click', () => {
+            this.startRace();
+        });
+
         // Keyboard controls
         document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft') {
-                e.preventDefault();
-                this.move('left');
-            } else if (e.key === 'ArrowRight') {
-                e.preventDefault();
-                this.move('right');
-            } else if (e.key === 'ArrowUp') {
-                e.preventDefault();
-                this.move('up');
-            } else if (e.key === 'ArrowDown') {
-                e.preventDefault();
-                this.move('down');
+            if (this.currentMode === 'single' && this.singlePlayerGame) {
+                this.handleKeyPress(e, this.singlePlayerGame);
+            } else if (this.currentMode === 'race' && this.playerGame && this.raceActive) {
+                this.handleKeyPress(e, this.playerGame);
             }
         });
 
         // Touch controls for mobile
-        let startX, startY;
-        const gameContainer = document.querySelector('.game-container');
+        this.bindTouchControls();
+    }
 
-        gameContainer.addEventListener('touchstart', (e) => {
+    handleKeyPress(e, game) {
+        let moved = false;
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            moved = game.move('left');
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            moved = game.move('right');
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            moved = game.move('up');
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            moved = game.move('down');
+        }
+
+        // Handle single player game over
+        if (this.currentMode === 'single' && moved) {
+            if (game.won) {
+                game.showGameOver('You Win!');
+            } else if (game.gameOver) {
+                game.showGameOver('Game Over!');
+            }
+        }
+    }
+
+    bindTouchControls() {
+        let startX, startY;
+        
+        const handleTouchStart = (e, game) => {
             startX = e.touches[0].clientX;
             startY = e.touches[0].clientY;
-        });
+        };
 
-        gameContainer.addEventListener('touchend', (e) => {
+        const handleTouchEnd = (e, game) => {
             if (!startX || !startY) return;
 
             const endX = e.changedTouches[0].clientX;
@@ -306,36 +588,55 @@ class Game2048 {
             const diffX = startX - endX;
             const diffY = startY - endY;
 
+            let moved = false;
             if (Math.abs(diffX) > Math.abs(diffY)) {
                 if (diffX > 0) {
-                    this.move('left');
+                    moved = game.move('left');
                 } else {
-                    this.move('right');
+                    moved = game.move('right');
                 }
             } else {
                 if (diffY > 0) {
-                    this.move('up');
+                    moved = game.move('up');
                 } else {
-                    this.move('down');
+                    moved = game.move('down');
+                }
+            }
+
+            // Handle single player game over
+            if (this.currentMode === 'single' && moved) {
+                if (game.won) {
+                    game.showGameOver('You Win!');
+                } else if (game.gameOver) {
+                    game.showGameOver('Game Over!');
                 }
             }
 
             startX = null;
             startY = null;
+        };
+
+        // Single player touch controls
+        const singlePlayerContainer = document.querySelector('#single-player-mode .game-container');
+        singlePlayerContainer.addEventListener('touchstart', (e) => {
+            if (this.singlePlayerGame) handleTouchStart(e, this.singlePlayerGame);
+        });
+        singlePlayerContainer.addEventListener('touchend', (e) => {
+            if (this.singlePlayerGame) handleTouchEnd(e, this.singlePlayerGame);
         });
 
-        // Button events
-        document.getElementById('restart').addEventListener('click', () => {
-            this.restart();
+        // Race mode player touch controls
+        const playerContainer = document.querySelector('#player-grid').parentElement;
+        playerContainer.addEventListener('touchstart', (e) => {
+            if (this.playerGame && this.raceActive) handleTouchStart(e, this.playerGame);
         });
-
-        document.getElementById('new-game').addEventListener('click', () => {
-            this.restart();
+        playerContainer.addEventListener('touchend', (e) => {
+            if (this.playerGame && this.raceActive) handleTouchEnd(e, this.playerGame);
         });
     }
 }
 
-// Initialize the game when the page loads
+// Initialize the game manager when the page loads
 document.addEventListener('DOMContentLoaded', () => {
-    new Game2048();
+    new GameManager();
 });
