@@ -7,7 +7,7 @@
 
 ## Project URLs
 - **GitHub Repository**: [https://github.com/evanjiang943/cs1060-evanjiang943-hw1](https://github.com/evanjiang943/cs1060-evanjiang943-hw1)
-- **Netlify Deployment**: [To be added after deployment]
+- **Netlify Deployment**: [https://benevolent-klepon-1de920.netlify.app/] (https://benevolent-klepon-1de920.netlify.app/)
 
 ## Project Description
 This project is a web-based implementation of the popular 2048 puzzle game. The game features a 4x4 grid where players combine tiles with the same numbers to reach the 2048 tile.
