@@ -116,6 +116,12 @@ class Game2048 {
                 this.gameOver = true;
                 return 'lose';
             }
+        } else {
+            // Check if game is over even when no move was made
+            if (this.checkGameOver()) {
+                this.gameOver = true;
+                return 'lose';
+            }
         }
 
         return moved;
@@ -290,32 +296,112 @@ class Game2048 {
         this.init();
     }
 
+    // Method to check if game should end (no moves available)
+    hasMovesAvailable() {
+        // Check for empty cells first
+        for (let i = 0; i < this.size; i++) {
+            for (let j = 0; j < this.size; j++) {
+                if (this.grid[i][j] === 0) {
+                    return true;
+                }
+            }
+        }
+
+        // Check if any moves are possible
+        return this.canMove('left') || this.canMove('right') || 
+               this.canMove('up') || this.canMove('down');
+    }
+
     // Get available moves for AI
     getAvailableMoves() {
         const moves = [];
         const directions = ['left', 'right', 'up', 'down'];
         
         for (const direction of directions) {
-            // Test if move is possible
-            const testGrid = this.grid.map(row => [...row]);
-            const testGame = Object.create(this);
-            testGame.grid = testGrid;
-            
-            if (testGame.move(direction)) {
+            // Test if move is possible by creating a temporary test
+            if (this.canMove(direction)) {
                 moves.push(direction);
             }
         }
         
         return moves;
     }
+
+    // Helper method to check if a move is possible without actually making it
+    canMove(direction) {
+        const testGrid = this.grid.map(row => [...row]);
+        
+        switch (direction) {
+            case 'left':
+                return this.canMoveLeft(testGrid);
+            case 'right':
+                return this.canMoveRight(testGrid);
+            case 'up':
+                return this.canMoveUp(testGrid);
+            case 'down':
+                return this.canMoveDown(testGrid);
+            default:
+                return false;
+        }
+    }
+
+    canMoveLeft(grid) {
+        for (let i = 0; i < this.size; i++) {
+            for (let j = 1; j < this.size; j++) {
+                if (grid[i][j] !== 0 && (grid[i][j-1] === 0 || grid[i][j-1] === grid[i][j])) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    canMoveRight(grid) {
+        for (let i = 0; i < this.size; i++) {
+            for (let j = 0; j < this.size - 1; j++) {
+                if (grid[i][j] !== 0 && (grid[i][j+1] === 0 || grid[i][j+1] === grid[i][j])) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    canMoveUp(grid) {
+        for (let i = 1; i < this.size; i++) {
+            for (let j = 0; j < this.size; j++) {
+                if (grid[i][j] !== 0 && (grid[i-1][j] === 0 || grid[i-1][j] === grid[i][j])) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    canMoveDown(grid) {
+        for (let i = 0; i < this.size - 1; i++) {
+            for (let j = 0; j < this.size; j++) {
+                if (grid[i][j] !== 0 && (grid[i+1][j] === 0 || grid[i+1][j] === grid[i][j])) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 }
 
 class CPUPlayer extends Game2048 {
     constructor(gridId, scoreId, gameOverId, gameOverTitleId) {
         super(gridId, scoreId, gameOverId, gameOverTitleId);
-        this.moveDelay = 1500; // Much slower CPU moves (1.5 seconds delay)
+        this.moveDelay = 1200; // Slightly faster CPU moves (1.2 seconds delay)
         this.isActive = false;
         this.moveTimeout = null;
+        this.gameEndCallback = null; // Callback for when CPU game ends
+    }
+
+    // Set callback for when CPU game ends
+    setGameEndCallback(callback) {
+        this.gameEndCallback = callback;
     }
 
     start() {
@@ -341,16 +427,22 @@ class CPUPlayer extends Game2048 {
             if (move) {
                 const result = this.move(move);
                 if (result === 'win') {
+                    this.showGameOver('Computer Wins!');
                     this.stop();
+                    if (this.gameEndCallback) this.gameEndCallback('cpu-win');
                     return 'win';
                 } else if (result === 'lose') {
+                    this.showGameOver('Computer Lost!');
                     this.stop();
+                    if (this.gameEndCallback) this.gameEndCallback('cpu-lose');
                     return 'lose';
                 }
             } else {
                 // No valid moves available
                 this.gameOver = true;
+                this.showGameOver('Computer Lost!');
                 this.stop();
+                if (this.gameEndCallback) this.gameEndCallback('cpu-lose');
                 return 'lose';
             }
             
@@ -450,6 +542,20 @@ class GameManager {
         this.raceActive = true;
         this.hideRaceWinner();
         
+        // Set up CPU game end callback
+        if (this.cpuGame) {
+            this.cpuGame.setGameEndCallback((result) => {
+                if (result === 'cpu-win') {
+                    this.endRace('Computer Wins!');
+                } else if (result === 'cpu-lose' && this.playerGame.gameOver) {
+                    this.endRace('Draw - Both Lost!');
+                } else if (result === 'cpu-lose' && !this.playerGame.gameOver && !this.playerGame.won) {
+                    // CPU lost but player is still playing - player can still win
+                    // Race continues until player wins or loses
+                }
+            });
+        }
+        
         // Start CPU player with a small delay to ensure everything is initialized
         setTimeout(() => {
             if (this.cpuGame && this.raceActive) {
@@ -467,6 +573,7 @@ class GameManager {
         const checkWin = () => {
             if (!this.raceActive) return;
 
+            // Check for wins first
             if (this.playerGame && this.playerGame.won) {
                 this.endRace('You Win!');
                 return;
@@ -477,19 +584,27 @@ class GameManager {
                 return;
             } 
             
-            if (this.playerGame && this.cpuGame && 
-                this.playerGame.gameOver && this.cpuGame.gameOver) {
-                this.endRace('Draw - Both Lost!');
-                return;
+            // Check for game over states
+            if (this.playerGame && this.cpuGame) {
+                if (this.playerGame.gameOver && this.cpuGame.gameOver) {
+                    this.endRace('Draw - Both Lost!');
+                    return;
+                } else if (this.playerGame.gameOver && !this.cpuGame.gameOver && !this.cpuGame.won) {
+                    // Player lost, CPU still playing - let CPU continue
+                    // The race will end when CPU wins or loses
+                } else if (this.cpuGame.gameOver && !this.playerGame.gameOver && !this.playerGame.won) {
+                    // CPU lost, player still playing - let player continue
+                    // Player can still win
+                }
             }
             
             // Continue checking if race is still active
             if (this.raceActive) {
-                setTimeout(checkWin, 200); // Check again in 200ms
+                setTimeout(checkWin, 100); // Check more frequently for better responsiveness
             }
         };
 
-        setTimeout(checkWin, 200);
+        setTimeout(checkWin, 100);
     }
 
     endRace(winnerText) {
@@ -546,27 +661,43 @@ class GameManager {
     }
 
     handleKeyPress(e, game) {
-        let moved = false;
+        let result = false;
         if (e.key === 'ArrowLeft') {
             e.preventDefault();
-            moved = game.move('left');
+            result = game.move('left');
         } else if (e.key === 'ArrowRight') {
             e.preventDefault();
-            moved = game.move('right');
+            result = game.move('right');
         } else if (e.key === 'ArrowUp') {
             e.preventDefault();
-            moved = game.move('up');
+            result = game.move('up');
         } else if (e.key === 'ArrowDown') {
             e.preventDefault();
-            moved = game.move('down');
+            result = game.move('down');
         }
 
-        // Handle single player game over
-        if (this.currentMode === 'single' && moved) {
-            if (game.won) {
+        // Handle game over states
+        if (this.currentMode === 'single') {
+            if (result === 'win') {
                 game.showGameOver('You Win!');
-            } else if (game.gameOver) {
+            } else if (result === 'lose') {
                 game.showGameOver('Game Over!');
+            }
+        } else if (this.currentMode === 'race' && this.raceActive) {
+            if (result === 'win') {
+                game.showGameOver('You Win!');
+                this.endRace('You Win!');
+            } else if (result === 'lose') {
+                game.showGameOver('You Lost!');
+                // Check if CPU also lost or is still playing
+                if (this.cpuGame.gameOver) {
+                    this.endRace('Draw - Both Lost!');
+                } else if (this.cpuGame.won) {
+                    this.endRace('Computer Wins!');
+                } else {
+                    // CPU is still playing, they might still win
+                    // Race will end when CPU wins or loses via callback
+                }
             }
         }
     }
@@ -579,7 +710,7 @@ class GameManager {
             startY = e.touches[0].clientY;
         };
 
-        const handleTouchEnd = (e, game) => {
+            const handleTouchEnd = (e, game) => {
             if (!startX || !startY) return;
 
             const endX = e.changedTouches[0].clientX;
@@ -588,27 +719,43 @@ class GameManager {
             const diffX = startX - endX;
             const diffY = startY - endY;
 
-            let moved = false;
+            let result = false;
             if (Math.abs(diffX) > Math.abs(diffY)) {
                 if (diffX > 0) {
-                    moved = game.move('left');
+                    result = game.move('left');
                 } else {
-                    moved = game.move('right');
+                    result = game.move('right');
                 }
             } else {
                 if (diffY > 0) {
-                    moved = game.move('up');
+                    result = game.move('up');
                 } else {
-                    moved = game.move('down');
+                    result = game.move('down');
                 }
             }
 
-            // Handle single player game over
-            if (this.currentMode === 'single' && moved) {
-                if (game.won) {
+            // Handle game over states
+            if (this.currentMode === 'single') {
+                if (result === 'win') {
                     game.showGameOver('You Win!');
-                } else if (game.gameOver) {
+                } else if (result === 'lose') {
                     game.showGameOver('Game Over!');
+                }
+            } else if (this.currentMode === 'race' && this.raceActive) {
+                if (result === 'win') {
+                    game.showGameOver('You Win!');
+                    this.endRace('You Win!');
+                } else if (result === 'lose') {
+                    game.showGameOver('You Lost!');
+                    // Check if CPU also lost or is still playing
+                    if (this.cpuGame.gameOver) {
+                        this.endRace('Draw - Both Lost!');
+                    } else if (this.cpuGame.won) {
+                        this.endRace('Computer Wins!');
+                    } else {
+                        // CPU is still playing, they might still win
+                        // Race will end when CPU wins or loses via callback
+                    }
                 }
             }
 
